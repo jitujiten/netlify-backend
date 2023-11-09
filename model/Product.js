@@ -26,7 +26,7 @@ const ProductSchema = new Schema({
   brand: { type: String, required: true },
   category: { type: String, required: true },
   thumbnail: { type: String, required: true },
-  images: { type: Array, required: true },
+  images: { type: [String], required: true },
   deleted: { type: Boolean, default: false },
 });
 

@@ -11,8 +11,13 @@ exports.createProduct = async (req, res) => {
 };
 
 exports.fetchAllProducts = async (req, res) => {
-  let query = Product.find({});
-  let totalProductQuery = Product.find({});
+  let condition = {};
+  if (!req.query.admin) {
+    condition.deleted = { $ne: true };
+  }
+
+  let query = Product.find(condition);
+  let totalProductQuery = Product.find(condition);
 
   if (req.query.category) {
     query = query.find({ category: req.query.category });
@@ -40,7 +45,7 @@ exports.fetchAllProducts = async (req, res) => {
 
   try {
     const docs = await query.exec();
-    res.set('X-Total-Count', TotalDocs); //set Used for send data in the header
+    res.set("X-Total-Count", TotalDocs); //set Used for send data in the header
     res.status(200).json(docs);
   } catch (err) {
     res.status(400).json(err);
@@ -57,11 +62,10 @@ exports.fetchProductById = async (req, res) => {
   }
 };
 
-
 exports.updateProductById = async (req, res) => {
   try {
     const id = req.params.id;
-    const doc = await Product.findByIdAndUpdate(id,req.body,{new:true});
+    const doc = await Product.findByIdAndUpdate(id, req.body, { new: true });
     res.status(201).json(doc);
   } catch (err) {
     res.status(400).json(err);

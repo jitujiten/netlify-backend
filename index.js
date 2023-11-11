@@ -11,6 +11,7 @@ const JwtStrategy = require("passport-jwt").Strategy;
 const ExtractJwt = require("passport-jwt").ExtractJwt;
 const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
+const path = require("path");
 
 const ProductsRouters = require("./routes/Products");
 const CategoriesRouters = require("./routes/Category");
@@ -21,6 +22,7 @@ const CartRouters = require("./routes/Cart");
 const OrderRouters = require("./routes/Order");
 const { User } = require("./model/User");
 const { IsAuth, sanitiZeUser, cookieExtractor } = require("./services/common");
+const { Order } = require("./model/Order");
 
 //jwt option
 const opts = {};
@@ -28,7 +30,7 @@ opts.jwtFromRequest = cookieExtractor;
 opts.secretOrKey = process.env.JWT_SECREET_KEY;
 
 //middlewares
-server.use(express.static("build"));
+server.use(express.static(path.resolve(__dirname, "build")));
 
 server.use(cookieParser());
 
@@ -55,7 +57,9 @@ server.use("/users", IsAuth(), UsersRouters.router);
 server.use("/auth", AuthRouters.router);
 server.use("/cart", IsAuth(), CartRouters.router);
 server.use("/orders", IsAuth(), OrderRouters.router);
-
+server.get("*", (req, res) =>
+  res.sendFile(path.resolve("build", "index.html"))
+);
 //passport strategies
 passport.use(
   "local",
@@ -80,7 +84,10 @@ passport.use(
           if (!crypto.timingSafeEqual(user.password, hashedPassword)) {
             done(null, false, { message: "Invalid Credentials" });
           }
-          const token = jwt.sign(sanitiZeUser(user), process.env.JWT_SECREET_KEY);
+          const token = jwt.sign(
+            sanitiZeUser(user),
+            process.env.JWT_SECREET_KEY
+          );
           done(null, { id: user.id, role: user.role, token });
         }
       );
@@ -130,7 +137,7 @@ passport.deserializeUser(function (user, cb) {
 const stripe = require("stripe")(process.env.STRIPE_KEY);
 
 server.post("/create-payment-intent", async (req, res) => {
-  const { totalAmount } = req.body;
+  const { totalAmount, orderId } = req.body;
 
   // Create a PaymentIntent with the order amount and currency
   const paymentIntent = await stripe.paymentIntents.create({
@@ -139,6 +146,9 @@ server.post("/create-payment-intent", async (req, res) => {
     // In the latest version of the API, specifying the `automatic_payment_methods` parameter is optional because Stripe enables its functionality by default.
     automatic_payment_methods: {
       enabled: true,
+    },
+    metadata: {
+      orderId,
     },
   });
 
@@ -155,7 +165,7 @@ const endpointSecret = process.env.ENDPOINT_SECREET;
 server.post(
   "/webhook",
   express.raw({ type: "application/json" }),
-  (request, response) => {
+  async (request, response) => {
     const sig = request.headers["stripe-signature"];
 
     let event;
@@ -168,7 +178,18 @@ server.post(
     }
 
     // Handle the event
-    console.log(`Unhandled event type ${event.type}`);
+    switch (event.type) {
+      case "payment_intent.succeeded":
+        const paymentIntentSucceeded = event.data.object;
+        const order = await Order.find(paymentIntentSucceeded.metadata.orderId);
+        order.paymentStatus = "received";
+        await order.save();
+        // Then define and call a function to handle the event payment_intent.succeeded
+        break;
+      // ... handle other event types
+      default:
+        console.log(`Unhandled event type ${event.type}`);
+    }
 
     // Return a 200 response to acknowledge receipt of the event
     response.send();

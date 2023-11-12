@@ -1,5 +1,6 @@
 require("dotenv").config();
 const express = require("express");
+const serverless=require("serverless-http")
 const server = express();
 const mongoose = require("mongoose");
 const cors = require("cors");
@@ -50,16 +51,17 @@ server.use(
 );
 
 server.use(express.json()); //to parse req.body
-server.use("/products", IsAuth(), ProductsRouters.router); //to parse req.body
-server.use("/category", IsAuth(), CategoriesRouters.router);
-server.use("/brands", IsAuth(), BrandRouters.router);
-server.use("/users", IsAuth(), UsersRouters.router);
-server.use("/auth", AuthRouters.router);
-server.use("/cart", IsAuth(), CartRouters.router);
-server.use("/orders", IsAuth(), OrderRouters.router);
-server.get("*", (req, res) =>
-  res.sendFile(path.resolve("build", "index.html"))
-);
+server.use("/.netlify/functions/products", IsAuth(), ProductsRouters.router); //to parse req.body
+server.use("/.netlify/functions/category", IsAuth(), CategoriesRouters.router);
+server.use("/.netlify/functions/brands", IsAuth(), BrandRouters.router);
+server.use("/.netlify/functions/users", IsAuth(), UsersRouters.router);
+server.use("/.netlify/functions/auth", AuthRouters.router);
+server.use("/.netlify/functions/cart", IsAuth(), CartRouters.router);
+server.use("/.netlify/functions/orders", IsAuth(), OrderRouters.router);
+
+// server.get("*", (req, res) =>
+//   res.sendFile(path.resolve("build", "index.html"))
+// );
 //passport strategies
 passport.use(
   "local",
@@ -203,6 +205,6 @@ async function main() {
   console.log("mongoose connected");
 }
 
-server.listen(process.env.PORT, () => {
-  console.log("server started");
-});
+// server.listen(process.env.PORT, () => {
+//   console.log("server started");
+// });

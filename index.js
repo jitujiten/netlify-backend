@@ -205,6 +205,6 @@ async function main() {
   console.log("mongoose connected");
 }
 
-// server.listen(process.env.PORT, () => {
-//   console.log("server started");
-// });
+server.listen(process.env.PORT, () => {
+  console.log("server started");
+});
